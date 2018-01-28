@@ -12,24 +12,23 @@
 ##### IMPORT STATEMENTS #####
 #############################
 
-from flask import Flask, request, render_template
-<<<<<<< HEAD
-import FlaskForm
-from wtforms import StringField, SubmitField, RadioField, ValidationError
-from wtforms.validators import Required
-
-=======
+from flask import Flask, request, render_template, url_for, flash, redirect
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, RadioField, ValidationError
 from wtforms.validators import Required
+
+import requests
+import json
 
 #####################
 ##### APP SETUP #####
 #####################
 
->>>>>>> a6eb0a1... Add structure and import stmts necessary
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hardtoguessstring'
+app.debug = True
+
 
 ####################
 ###### FORMS #######
@@ -50,6 +49,74 @@ def hello_world():
 @app.route('/user/<name>')
 def hello_user(name):
     return '<h1>Hello {0}<h1>'.format(name)
+
+@app.route('/artistform')
+def search_artist():
+    return render_template('artistform.html')
+
+
+### Part 1 (500 points)
+
+
+@app.route('/artistinfo')
+def artist_info():
+    artist = request.args.get('artist')
+    baseurl = "https://itunes.apple.com/search"
+    artist_name = str(artist)
+    artist_param = {"term":artist_name, "entity":"song"}
+    response = requests.get(baseurl, params = artist_param)
+    response_dict = json.loads(response.text)
+    trackName = response_dict['results']
+    return render_template('artist_info.html', artist=artist, objects=trackName)
+
+@app.route('/artistlinks')
+def artist_link():
+    return render_template('artist_links.html')
+
+@app.route('/specific/song/<artist_name>')
+def specific_song(artist_name):
+    baseurl = "https://itunes.apple.com/search"
+    artistname = str(artist_name)
+    artist_param = {"term":artistname, "entity":"song"}
+    response = requests.get(baseurl, params = artist_param)
+    response_dict = json.loads(response.text)
+    results = response_dict['results']
+    return render_template('specific_artist.html', results=results)
+
+
+
+### Part 2 (300 points)
+
+
+class AlbumEntryForm(FlaskForm):
+    album = StringField('Enter the name of an album:', validators=[Required()])
+
+    rating = RadioField('How much do you like this album? (1 low, 3 high)', choices=[('1','1'),('2','2'),('3','3')], validators=[Required()])
+
+    submit = SubmitField('Submit')
+
+
+@app.route('/album_entry', methods = ['GET', 'POST'])
+def album_entry():
+    form = AlbumEntryForm()
+    return render_template('album_entry.html',form=form)
+
+
+
+@app.route('/album_result', methods = ['GET', 'POST'])
+def result():
+    form = AlbumEntryForm()
+    if form.validate_on_submit():
+
+        album = form.album.data
+        rating = form.rating.data
+    return render_template('album_data.html', album=album, rating=rating)
+    flash(form.errors)
+    return redirect(url_for('album_entry'))
+
+
+
+
 
 
 if __name__ == '__main__':
